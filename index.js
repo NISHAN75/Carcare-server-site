@@ -31,6 +31,27 @@ async function run(){
         const products = await cursor.toArray();
         res.send(products);
       });
+    
+    app.get('/products/:id', async(req,res)=>{
+      const id=req.params.id;
+      const query={_id: ObjectId(id)};
+      const product = await productsCollection.findOne(query);
+      res.send(product)
+    });
+    // update inventory
+    app.put("/products/:id", async (req, res) => {
+      const id = req.params.id;
+      const updateQuantity = req.body;
+      const filter = { _id: ObjectId(id) };
+      const updateDoc = {
+        $set: {
+          quantity: updateQuantity.addQuantity,
+        },
+      };
+
+      const result = await productsCollection.updateMany(filter, updateDoc);
+      res.send(result);
+    });
       
 
  }
