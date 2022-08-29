@@ -8,12 +8,29 @@ const { reset } = require("nodemon");
 
 
 const port = process.env.PORT || 5000;
-// user:dbUser1
-// pas:QUqaBJqPgl3NNAJi
 
-// middle ware
+
+// middleware
 app.use(cors());
 app.use(express.json());
+
+function verifyJwt(req, res, next) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) {
+    return res.status(401).send({ message: "unauthorized access" });
+  }
+  const token = authHeader.split(" ")[1];
+  jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
+    if (err) {
+      return res.status(403).send({ message: "Forbidden access" });
+    }
+    else{
+      req.decoded = decoded;
+      next();
+    }
+  });
+
+}
 
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.bkii56h.mongodb.net/?retryWrites=true&w=majority`;
@@ -25,6 +42,17 @@ async function run(){
     await client.connect();
     const productsCollection = client.db('inventory').collection('products');
 
+    
+
+    // auth
+    app.post("/login", async (req, res) => {
+      const user = req.body;
+      const accessToken = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
+        expiresIn: "1d",
+      });
+      res.send({ accessToken });
+      console.log({ accessToken });
+    });
     app.get("/products", async (req, res) => {
         const query = {};
         const cursor = productsCollection.find(query);
@@ -38,6 +66,19 @@ async function run(){
       const product = await productsCollection.findOne(query);
       res.send(product)
     });
+    app.get('/myItems',verifyJwt , async(req,res)=>{
+      const decodedEmail = req.decoded.email;
+      const email = req.query.email;
+      if (email === decodedEmail) {
+        const query = { email: email };
+        const cursor = productsCollection.find(query);
+        const result = await cursor.toArray();
+        res.send(result);
+      }
+      else{
+        res.status(403).send({message: 'Forbidden access'})
+      }
+    })
     // update inventory
     app.put("/products/:id", async (req, res) => {
       const id = req.params.id;
@@ -50,6 +91,28 @@ async function run(){
       };
 
       const result = await productsCollection.updateMany(filter, updateDoc);
+      res.send(result);
+    });
+
+    // post inventory
+    app.post("/products", async (req, res) => {
+      const newInventory = req.body;
+      console.log(newInventory);
+      const result = await productsCollection.insertOne(newInventory);
+      res.send(result);
+    });
+    // delete inventory
+    app.delete("/products/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: ObjectId(id) };
+      const result = await productsCollection.deleteOne(query);
+      res.send(result);
+    });
+    // my items delete
+    app.delete("/myItems/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: ObjectId(id) };
+      const result = await productsCollection.deleteOne(query);
       res.send(result);
     });
       
