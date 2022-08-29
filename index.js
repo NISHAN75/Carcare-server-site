@@ -51,7 +51,6 @@ async function run(){
         expiresIn: "1d",
       });
       res.send({ accessToken });
-      console.log({ accessToken });
     });
     app.get("/products", async (req, res) => {
         const query = {};
