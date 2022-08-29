@@ -41,6 +41,7 @@ async function run(){
  try{
     await client.connect();
     const productsCollection = client.db('inventory').collection('products');
+    const blogsCollection = client.db('blogs').collection('blog');
 
     
 
@@ -65,9 +66,24 @@ async function run(){
       const product = await productsCollection.findOne(query);
       res.send(product)
     });
-    app.get('/myItems',verifyJwt , async(req,res)=>{
+    app.get("/blog", async (req, res) => {
+        const query = {};
+        const cursor = blogsCollection.find(query);
+        const blogs = await cursor.toArray();
+        res.send(blogs);
+      });
+    
+    app.get('/blog/:id', async(req,res)=>{
+      const id=req.params.id;
+      const query={_id: ObjectId(id)};
+      const blog = await blogsCollection.findOne(query);
+      res.send(blog)
+    });
+    app.get('/myItems',verifyJwt, async(req,res)=>{
       const decodedEmail = req.decoded.email;
       const email = req.query.email;
+      console.log(decodedEmail,email);
+
       if (email === decodedEmail) {
         const query = { email: email };
         const cursor = productsCollection.find(query);
@@ -96,7 +112,6 @@ async function run(){
     // post inventory
     app.post("/products", async (req, res) => {
       const newInventory = req.body;
-      console.log(newInventory);
       const result = await productsCollection.insertOne(newInventory);
       res.send(result);
     });
